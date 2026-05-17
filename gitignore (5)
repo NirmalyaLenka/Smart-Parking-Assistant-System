@@ -1,0 +1,39 @@
+# Environment and credentials — never commit these
+firmware/config.h
+backend/.env
+.env
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.venv/
+env/
+
+# Arduino build artifacts
+firmware/*.bin
+firmware/*.elf
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Generated QR codes (large binary files)
+qr-generator/*.png
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
