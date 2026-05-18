@@ -1,0 +1,9 @@
+# .env.example — Smart Parking Backend Configuration
+# Copy this file to .env and fill in your values.
+# The actual .env file is listed in .gitignore and should never be committed.
+
+# Port the server listens on
+PORT=3000
+
+# Optional: Set to 'production' when deploying on a public server
+NODE_ENV=development
