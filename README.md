@@ -39,7 +39,7 @@ HC-SR04 ECHO is commonly 5 V while ESP8266 GPIO is 3.3 V tolerant. Use a correct
 
 ### Backend and filename mismatch
 
-As committed, `npm start` will not find the script named in the package manifest because the files are `package (1).json` and `server (1).js`. The server also serves `../frontend` and `../frontend/index.html`, but no `frontend/` directory exists. The firmware includes `config.h`, while the tracked header is named `config (2).h`. The suffixed `gitignore (5)` file is not an active ignore file, so local secrets are not protected by its patterns.
+As committed, `npm start` will not find the script named in the package manifest because the files are `package (1).json` and `server (1).js`. The server also serves `../frontend` and `../frontend/index.html`, but no `frontend/` directory exists. The firmware includes `config.h`, while the tracked header is named `config (2).h`. A proper root `.gitignore` was added in this maintenance batch; the legacy `gitignore (5)` file remains inert. Ignore rules do not protect files that are already tracked, so never commit real credentials.
 
 ## Local preview
 
