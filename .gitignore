@@ -1,0 +1,33 @@
+# Local credentials and environment
+.env
+**/.env
+config.h
+**/config.h
+
+# Node.js
+node_modules/
+npm-debug.log*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+env/
+
+# Generated QR images and logs
+qr_four_wheeler.png
+qr_two_wheeler.png
+*.log
+logs/
+
+# Build output and editor/OS files
+dist/
+build/
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.swp
+*.swo
