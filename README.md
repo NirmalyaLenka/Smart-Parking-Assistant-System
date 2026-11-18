@@ -1,176 +1,82 @@
 # Smart Parking Assistant System
 
-A low-cost IoT-based smart parking system that helps drivers find available parking spots in real time by scanning a QR code at the entrance. The system supports both two-wheelers and four-wheelers in separate zones, and updates slot availability automatically using ultrasonic sensors connected to an ESP8266 microcontroller.
+> **Prototype status:** The repository contains a browser simulation and early ESP8266/Node.js components, but the current filenames, server paths, and six-sensor pin map are inconsistent. It is not a ready-to-deploy live parking system as checked in.
 
----
+## What is included
 
-## What This Project Does
+The intended data path is ESP8266 ultrasonic readings -> `POST /api/update` -> in-memory Node.js state -> `GET /api/status`. The root `index.html` is a standalone interactive simulation; it does not poll the API and should not be presented as live sensor data.
 
-When a driver arrives at the parking lot, they scan a QR code placed at the entrance gate. This opens a webpage on their phone that shows exactly which slots are free and which are occupied, split by vehicle type. The page refreshes automatically so the information is always live. No app download, no login, no complicated setup on the user side.
+| Tracked root file | Purpose |
+|---|---|
+| `parking_sensor.ino` | ESP8266 sketch. Reads configured HC-SR04 sensors and posts JSON to the backend. |
+| `config (2).h` | Example Wi-Fi/server/zone settings. The sketch includes `config.h`, so this suffixed filename does not satisfy that include as-is. It currently contains placeholders. |
+| `server (1).js` | Express API server. Its static-file paths expect a `backend/` folder next to a `frontend/` folder, which are not present in the tracked root tree. |
+| `package (1).json` | Node package manifest content. npm does not automatically recognize this suffixed filename as `package.json`. |
+| `env (1).example` | Example `PORT` and `NODE_ENV` settings; the filename is not the conventional `.env.example`. |
+| `index.html` | Standalone simulated slot-map demo with manual/random scenarios; it is not connected to `server (1).js`. |
+| `generate_qr.py` | Generates two labeled QR-code PNGs from the `PARKING_URL` constant. Requires `qrcode[pil]`. |
+| `bill_of_materials (1).md` | BOM and approximate prices, explicitly dated 2024. Recheck current prices before purchasing. |
+| `components_and_alternatives.md` | Component reference and alternatives. |
+| `sensor_placement_guide (1).md` | Sensor mounting and environment notes. |
+| `wiring_diagram (2).md` | HC-SR04/ESP8266 wiring notes; see the blocking pin-conflict warning below. |
+| `gitignore (5)` | Ignore-pattern text only. Git does not treat this suffixed filename as an active `.gitignore`. |
+| `LICENSE (4)` | License-named file with a suffix; confirm licensing rather than assuming GitHub recognizes it as the repository's standard license file. |
 
-On the hardware side, each parking slot has an ultrasonic sensor mounted above it or at the entry of each bay. These sensors measure distance and detect whether a vehicle is present. The readings go to an ESP8266 NodeMCU board over Wi-Fi, which pushes the data to a lightweight backend server. The frontend reads from that server and renders the slot map.
+## Architecture and API
 
----
+- `POST /api/update` accepts a JSON object containing `zone`, `vehicleType`, `timestamp`, and a `slots` array with `id` and `occupied` fields.
+- `GET /api/status` returns current in-memory slot state and summary counts.
+- The server initializes default slots in memory. State is not persisted across server restarts.
+- The firmware defaults to a two-second posting interval. A sensor timeout currently sets that slot to `false` (free) in the outgoing reading, so a failed sensor can be misrepresented as an empty slot.
 
-## Why This Approach
+## Important blockers before hardware use
 
-Most commercial parking management systems cost lakhs of rupees for hardware alone, require proprietary software, and take months to install. This system uses components that cost under Rs. 300 per slot, runs on open-source software, and can be set up in a weekend. For small colleges, hospitals, residential societies, market complexes, and small businesses, this is a practical and immediate solution.
+### Six-sensor pin conflicts
 
-The QR code approach means zero friction for users. They do not need to install anything. Any phone with a camera works.
+The current `parking_sensor.ino` arrays reuse GPIOs: `D2` is both a trigger and echo pin, and `D6` / `D8` are repeated as echo inputs. The wiring document mentions a multiplexer, but the sketch contains no multiplexer driver. Do **not** wire or deploy a six-sensor installation using the current mapping. A corrected pin plan and corresponding firmware change are required before hardware use; this documentation-only pass leaves firmware pins unchanged.
 
----
+HC-SR04 ECHO is commonly 5 V while ESP8266 GPIO is 3.3 V tolerant. Use a correctly sized voltage divider or level shifter on every ECHO line; do not connect a 5 V ECHO output directly to an ESP8266 GPIO.
 
-## Repository Structure
+### Backend and filename mismatch
 
-Every file in this repository has a specific purpose. Here is what each one does and why it exists.
+As committed, `npm start` will not find the script named in the package manifest because the files are `package (1).json` and `server (1).js`. The server also serves `../frontend` and `../frontend/index.html`, but no `frontend/` directory exists. The firmware includes `config.h`, while the tracked header is named `config (2).h`. The suffixed `gitignore (5)` file is not an active ignore file, so local secrets are not protected by its patterns.
 
-### Root Level
+## Local preview
 
-- `README.md` - This file. Explains the full project from hardware to software.
-- `LICENSE` - MIT license. You are free to use, modify, and deploy this for any purpose.
-- `.gitignore` - Tells Git to ignore sensitive config files, node_modules, and compiled binaries so they do not end up in version control.
+Open the root `index.html` in a browser to try the simulated slot map. The Random/manual scenarios are generated in the page; this is not a live reading from an ESP8266 or the backend.
 
-### /firmware
+## Preparing a local backend copy
 
-This folder contains the code that runs directly on the ESP8266 NodeMCU board.
+To match the paths expected by the server without changing the tracked repository, make a local working copy with this layout:
 
-- `firmware/parking_sensor.ino` - The main Arduino sketch. It reads all the ultrasonic sensors, decides if a slot is occupied or free, and sends a JSON payload to the backend server over Wi-Fi using HTTP POST. It runs in a loop and posts every two seconds.
-- `firmware/config.h` - Stores your Wi-Fi credentials (SSID and password) and the backend server IP address. This file is listed in .gitignore so you never accidentally commit your passwords to GitHub.
-- `firmware/wiring_diagram.md` - Plain text description of how to connect each sensor to the ESP8266 GPIO pins, including voltage levels and ground connections. Read this before you solder anything.
-
-### /backend
-
-This folder has a simple Node.js server that acts as the bridge between the ESP8266 and the user-facing frontend.
-
-- `backend/server.js` - The core server. It runs on Express and exposes two endpoints: one POST endpoint that receives sensor data from the ESP8266, and one GET endpoint that the frontend polls to fetch the current slot status. It also serves the frontend HTML file when accessed from a browser.
-- `backend/package.json` - Lists the Node.js dependencies (just Express and cors). Run `npm install` in this folder to get started.
-- `backend/.env.example` - Shows which environment variables the server expects, like the port number. Copy this to `.env` and fill it in. The actual `.env` file is not committed.
-
-### /frontend
-
-This is what the user sees when they scan the QR code.
-
-- `frontend/index.html` - The complete single-page parking display. Shows a visual grid of all slots, color-coded green for free and red for occupied. Separate sections for two-wheelers and four-wheelers. Auto-refreshes every three seconds. Works on any screen size.
-- `frontend/style.css` - All the visual styling. Uses a dark industrial theme with clear color coding. Written in plain CSS so there is no build step required.
-- `frontend/script.js` - Fetches the slot data from the backend every three seconds and updates the slot grid without reloading the page. Handles connection errors gracefully so the display does not break if the server hiccups.
-
-### /hardware
-
-Documentation for the physical build.
-
-- `hardware/bill_of_materials.md` - Complete component list with approximate prices in Indian Rupees, quantity needed per slot, and where to source them (Amazon India, Robu.in, local electronics shops). Total system cost for a 20-slot parking lot is estimated here.
-- `hardware/sensor_placement_guide.md` - Explains how far above the ground to mount the sensors, angle requirements, and how weather and sunlight can affect readings. Also covers enclosure suggestions for outdoor use.
-- `hardware/pcb_notes.md` - Notes for anyone who wants to make a simple custom PCB to hold the ESP8266 and sensor connectors neatly instead of using a breadboard permanently.
-
-### /qr-generator
-
-- `qr-generator/generate_qr.py` - A small Python script that takes your deployed frontend URL and generates a QR code image ready to print. Install qrcode library with pip, update the URL variable, and run it. The output is a high-resolution PNG you can get printed at any print shop.
-
-### /demo
-
-- `demo/index.html` - A fully self-contained demonstration page that runs in any browser without any server or hardware. It simulates the sensor data with random slot updates so you can see the full system in action before buying a single component. This is also the file to share when pitching the project to someone.
-
----
-
-## Hardware Components
-
-The system is built around affordable, widely available parts.
-
-The ESP8266 NodeMCU is the main controller. It costs around Rs. 200-250 and has built-in Wi-Fi, which is the core reason it was chosen over Arduino Uno or ATmega boards. No separate Wi-Fi shield needed.
-
-HC-SR04 ultrasonic sensors do the detection. They cost Rs. 35-50 each, are extremely reliable for detecting vehicles at distances between 5 cm and 3 meters, and are available everywhere in India. Each sensor covers one parking slot.
-
-Power is supplied through a standard 5V adapter or a PoE setup if Ethernet is already available at the site. The ESP8266 with 20 sensors draws well under 500mA total.
-
-A single ESP8266 can handle up to 10-12 sensors if you use a multiplexer like the CD74HC4067. For larger lots, multiple ESP8266 boards can be deployed, each covering a zone, and all reporting to the same backend.
-
----
-
-## Getting Started
-
-### Step 1 - Set Up the Backend
-
-You need Node.js installed on a computer or a small server like Raspberry Pi.
-
-```
-cd backend
-npm install
-cp .env.example .env
-# Edit .env and set your port
-node server.js
+```text
+backend/
+  server.js       # copy of root server (1).js
+  package.json    # copy of root package (1).json
+  .env.example    # copy of root env (1).example
+frontend/
+  index.html      # copy of root index.html (simulation only)
 ```
 
-Note the IP address of this machine. Your ESP8266 and your QR code both need to point to it.
+Then, from `backend/`, run `npm install` and `npm start`. This can prepare the API server path after copying the files, but the copied HTML remains a simulation and is not wired to `/api/status`. No successful server run is claimed here.
 
-### Step 2 - Flash the Firmware
+## Preparing a local firmware sketch
 
-Open the firmware folder in Arduino IDE. Install the ESP8266 board package if you have not already. Open `config.h` and fill in your Wi-Fi name, password, and the backend server IP. Upload `parking_sensor.ino` to your NodeMCU.
+Create a local `firmware/parking_sensor/` sketch folder, copy `parking_sensor.ino` into it as `parking_sensor.ino`, and copy the contents of `config (2).h` into `firmware/parking_sensor/config.h`. Replace the Wi-Fi placeholders and set `SERVER_URL` to the backend machine's LAN address and port. Install ArduinoJson 6.x and the ESP8266 board package.
 
-### Step 3 - Wire the Sensors
+**Do not flash the six-sensor sketch for real use until the pin collisions are resolved in firmware and the wiring is revalidated.** Keep the backend on a trusted local network: the current API has permissive CORS and no authentication, and the state is volatile.
 
-Follow the wiring guide in `hardware/wiring_diagram.md`. Each HC-SR04 uses two GPIO pins (Trig and Echo). Test with the Serial Monitor first to confirm readings before mounting.
+## QR code generation
 
-### Step 4 - Generate and Print the QR Code
+Install the Python dependency with `python -m pip install "qrcode[pil]"`, edit `PARKING_URL` in `generate_qr.py` to the intended reachable URL, and run `python generate_qr.py`. The script writes `qr_four_wheeler.png` and `qr_two_wheeler.png` beside the script. The generated QR codes do not make the root simulation a live dashboard.
 
-Update the URL in `qr-generator/generate_qr.py` to point to your backend server address and run it. Print the generated QR code and place it at the parking entrance, ideally laminated or behind a plastic cover.
+## Verification status
 
-### Step 5 - Test
-
-Open `demo/index.html` in a browser to verify the frontend looks correct. Then switch the frontend to point at your live backend and scan the QR code from a phone.
-
----
-
-## Future Scope
-
-This system was designed to be extended. Here are the directions it can naturally grow in.
-
-Automatic barrier integration is the most immediate next step. A servo motor or relay connected to the ESP8266 can control a boom barrier. When all four-wheeler slots are full, the barrier stays closed and the entry display shows a full message, preventing drivers from entering a congested lot.
-
-License plate recognition can be layered on using a Raspberry Pi camera at the entrance. This enables entry logging without any manual registration.
-
-Monthly or daily reports can be added to the backend to show peak hours, average occupancy, and slot utilization rates. Useful for parking lot owners to plan staffing and pricing.
-
-Payment integration through UPI QR codes can be embedded in the slot detail page so drivers can pay for their parking time without visiting a payment counter.
-
-Multi-floor parking management is straightforward. Each floor gets its own set of ESP8266 nodes, all reporting to the same backend. The frontend shows a floor selector.
-
-Solar power with a small panel and battery bank makes this completely off-grid, suitable for open grounds, event venues, and rural sites.
-
-Smart city integration is the long-term application. Municipal corporations can deploy this across hundreds of street-side and public lots and feed the data into a city-wide parking app. This reduces traffic from people circling looking for parking, which is a meaningful fuel and emissions reduction.
-
-Hospital and airport applications benefit enormously from the accessibility filtering feature, where handicapped-accessible slots are tracked separately and reserved appropriately.
-
----
-
-## Contact
-
-If you are deploying this system, have questions, or want to collaborate on extending it, reach out at carmodbhai@gmail.com
-
-Bug reports and pull requests are welcome. If you build this and it works, sharing a photo or description of your setup is appreciated.
-
----
-
-## License
-
-MIT License. Use it freely.
-
-
----
-
-## Skills & technologies
-
-`Arduino/C++` · `C/C++` · `Python` · `JavaScript` · `HTML/CSS`
-
-
-## How it works
-
-The main firmware sketch is `parking_sensor.ino`. Open it in Arduino IDE, verify the board, pin mapping and library requirements, then compile and upload. Test hardware behaviour on the real circuit before relying on it.
-
+No end-to-end sensor/API test, firmware build, hardware test, or security test was performed for this documentation update. Component prices in the BOM are historical estimates, not current quotes.
 
 ## Maintenance & Audit
 
 - **Audit date:** 11 November 2026
-- **Documentation status:** README reviewed and audit record added on this date.
-- **Scope and evidence:** This is a documentation-level maintenance pass. It does not establish that source code compiles, dependencies are current, security has been tested, or hardware/runtime behavior has been verified.
-- **Code and tests:** No new functional code changes or test results are claimed by this README update. Run project-specific build, test, and hardware/runtime checks before relying on the project.
-- **Maintenance baseline:** Documentation status recorded through 11 November 2026; revisit setup instructions, dependencies, known limitations, and tests when the project changes.
+- **Documentation status:** Repository paths, firmware/config names, server expectations, dependencies, BOM, and wiring conflicts reviewed.
+- **Verification status:** Source/document inspection only; live integration and hardware behavior remain unverified.
+- **Scope:** Firmware, pin assignments, dependencies, and hardware behavior were not changed.
