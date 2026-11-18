@@ -1,5 +1,9 @@
 # Wiring Diagram — HC-SR04 to ESP8266 NodeMCU
 
+> **Do not use this as a validated six-sensor wiring plan.** The current `parking_sensor.ino` assigns `D2` as both a trigger and echo pin and repeats `D6` and `D8` as echo inputs. The sketch has no multiplexer implementation, despite the note below mentioning one. Do not wire or power the six-sensor arrangement from this table until a unique, board-safe pin map is designed and the firmware is updated and reviewed. This documentation warning does not change the existing pin assignments.
+
+> **Voltage safety:** HC-SR04 ECHO is commonly a 5 V signal; ESP8266 GPIO is 3.3 V tolerant. Use a suitable divider or level shifter on every ECHO signal.
+
 ## Sensor Pin Assignment
 
 Each HC-SR04 sensor has four pins: VCC, GND, TRIG, and ECHO.
