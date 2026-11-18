@@ -76,7 +76,7 @@ No end-to-end sensor/API test, firmware build, hardware test, or security test w
 
 ## Maintenance & Audit
 
-- **Audit date:** 11 November 2026
+- **Audit date:** 18 November 2026
 - **Documentation status:** Repository paths, firmware/config names, server expectations, dependencies, BOM, and wiring conflicts reviewed.
 - **Verification status:** Source/document inspection only; live integration and hardware behavior remain unverified.
 - **Scope:** Firmware, pin assignments, dependencies, and hardware behavior were not changed.
